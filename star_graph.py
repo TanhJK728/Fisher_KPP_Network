@@ -125,7 +125,7 @@ class StarGraphSolver:
 
         ani = animation.FuncAnimation(fig, update, frames=total_frames, blit=True)
         
-        # Save GIF (Need pillow: pip install pillow to view)
+        # Save GIF (Need pillow: pip install pillow to save gif)
         # fps=20
         ani.save(filename, writer='pillow', fps=20)
         plt.close()
