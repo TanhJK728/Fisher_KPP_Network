@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import matplotlib.animation as animation
 
 class FisherKPPSolver1D:
     """
@@ -54,11 +55,11 @@ class FisherKPPSolver1D:
         elif type == "random":
              self.u = np.random.rand(self.Nx) * 0.1
 
-    def solve_and_animate(self):
+    def solve_and_animate(self, filename="1D_simulation.gif"):
         """
         Run the time-stepping loop and animate the results.
         """
-        plt.ion()
+        # plt.ion()
         fig, ax = plt.subplots()
         line, = ax.plot(self.x, self.u, 'b-', label='Population Density u(x,t)')
         ax.set_ylim(0, 1.2)
@@ -69,35 +70,40 @@ class FisherKPPSolver1D:
         
         # Time integration loop
         u_new = np.zeros(self.Nx)
+
+        total_frames = 200
+        steps_per_frame = int(self.Nt / total_frames)
         
-        for n in range(self.Nt):
-            # 1. Diffusion Term: D * (u_{i+1} - 2u_i + u_{i-1}) / dx^2
-            # Inner points: u[1:-1]
-            diffusion = self.D * (self.u[2:] - 2*self.u[1:-1] + self.u[:-2]) / (self.dx**2)
+        def update(frame):
+            for n in range(steps_per_frame):
+                # 1. Diffusion Term: D * (u_{i+1} - 2u_i + u_{i-1}) / dx^2
+                # Inner points: u[1:-1]
+                diffusion = self.D * (self.u[2:] - 2*self.u[1:-1] + self.u[:-2]) / (self.dx**2)
+                
+                # 2. Reaction Term: r * u * (1 - u)
+                reaction = self.r * self.u[1:-1] * (1 - self.u[1:-1])
+                
+                # 3. Update inner points
+                u_new[1:-1] = self.u[1:-1] + self.dt * (diffusion + reaction)
+                
+                # 4. Boundary Conditions (Neumann: No Flux)
+                # u_x = 0  => u[0] = u[1], u[-1] = u[-2]
+                u_new[0] = u_new[1]
+                u_new[-1] = u_new[-2]
+                
+                # Update state
+                self.u[:] = u_new[:]
             
-            # 2. Reaction Term: r * u * (1 - u)
-            reaction = self.r * self.u[1:-1] * (1 - self.u[1:-1])
-            
-            # 3. Update inner points
-            u_new[1:-1] = self.u[1:-1] + self.dt * (diffusion + reaction)
-            
-            # 4. Boundary Conditions (Neumann: No Flux)
-            # u_x = 0  => u[0] = u[1], u[-1] = u[-2]
-            u_new[0] = u_new[1]
-            u_new[-1] = u_new[-2]
-            
-            # Update state
-            self.u[:] = u_new[:]
-            
-            # Visualization (Update every 10 steps to speed up)
-            if n % 10 == 0:
-                line.set_ydata(self.u)
-                ax.set_title(f"Fisher-KPP Simulation: t = {n*self.dt:.2f}s")
-                plt.draw()
-                plt.pause(0.001)
+            line.set_ydata(self.u)
+            ax.set_title(f"Fisher-KPP Simulation: t = {frame * steps_per_frame * self.dt:.2f}s")
+            return line, # matplotlib want's a tuple, so add a comma after "line"
         
-        plt.ioff()
-        plt.show()
+        ani = animation.FuncAnimation(fig, update, frames=total_frames, blit=True)
+        ani.save(filename, writer='pillow', fps=20)
+        plt.close()
+        
+        # plt.ioff()
+        # plt.show()
 
 if __name__ == "__main__":
     
