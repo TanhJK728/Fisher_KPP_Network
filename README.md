@@ -44,7 +44,9 @@ Here, one output branch (Green) has a lower diffusion coefficient ($`D=0.5`$) th
 1. Clone the repository.
 2. Run the star graph simulation:
    ```bash
+   pip install numpy matplotlib pillow
    python star_graph.py
+   python single_1D.py
    ```
 
 3. Modify the diffusion coefficient `self.D3` in the code to experiment with different network properties.
