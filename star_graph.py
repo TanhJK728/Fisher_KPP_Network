@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 class StarGraphSolver:
     """
@@ -23,7 +24,7 @@ class StarGraphSolver:
         self.dt = dt
         self.D = D
         self.r = r
-        self.D3 = 0.5
+        self.D3 = 1.0
         
         # Grid dimensions
         self.Nx = int(L / dx) + 1
@@ -67,11 +68,10 @@ class StarGraphSolver:
         u[1:-1] += self.dt * (diffusion + reaction)
         return u
 
-    def solve_and_animate(self):
+    def solve_and_animate(self, filename="simulation.gif"):
         """
         Run the time-stepping loop and animate the results.
         """
-        plt.ion()
         fig, ax = plt.subplots(figsize=(10, 6))
         
         # Edge 1 is plotted on the negative x-axis to visualize the 'input' flow.
@@ -87,41 +87,48 @@ class StarGraphSolver:
         ax.set_title("Fisher-KPP Dynamics on a Star Graph")
         ax.legend()
         ax.grid(True)
+
+        total_frames = 200
+        steps_per_frame = int(self.Nt / total_frames)
         
-        for n in range(self.Nt):
-            # 1. Update Interior Points for all edges
-            self.u1 = self.step_one_edge(self.u1, D_local=self.D)
-            self.u2 = self.step_one_edge(self.u2, D_local=self.D)
-            self.u3 = self.step_one_edge(self.u3, D_local=self.D3)
-            
-            # 2. Apply Boundary Conditions at Far Ends (Neumann： No Flux)
-            # Assumption: The population cannot leave the system from the far ends.
-            self.u1[-1] = self.u1[-2] 
-            self.u2[-1] = self.u2[-2]
-            self.u3[-1] = self.u3[-2]
-            
-            # 3. Apply Junction Conditions (Kirchhoff Law)
-            # Continuity: u1[0] = u2[0] = u3[0]
-            # Flux Conservation: The sum of fluxes at the node must be zero.
-            # In the discrete case with equal dx and D, the junction value becomes the average of its immediate neighbors.
-            u_neighbors_sum = self.u1[1] + self.u2[1] + self.u3[1]
-            u_junction_new = u_neighbors_sum / 3.0
-            
-            # Update the junction node for all edges
-            self.u1[0] = u_junction_new
-            self.u2[0] = u_junction_new
-            self.u3[0] = u_junction_new
+        def update(frame):
+            for n in range(steps_per_frame):
+                # 1. Update Interior Points for all edges
+                self.u1 = self.step_one_edge(self.u1, D_local=self.D)
+                self.u2 = self.step_one_edge(self.u2, D_local=self.D)
+                self.u3 = self.step_one_edge(self.u3, D_local=self.D3)
+                
+                # 2. Apply Boundary Conditions at Far Ends (Neumann： No Flux)
+                # Assumption: The population cannot leave the system from the far ends.
+                self.u1[-1] = self.u1[-2] 
+                self.u2[-1] = self.u2[-2]
+                self.u3[-1] = self.u3[-2]
+                
+                # 3. Apply Junction Conditions (Kirchhoff Law)
+                # Continuity: u1[0] = u2[0] = u3[0]
+                # Flux Conservation: The sum of fluxes at the node must be zero.
+                # In the discrete case with equal dx and D, the junction value becomes the average of its immediate neighbors.
+                u_neighbors_sum = self.u1[1] + self.u2[1] + self.u3[1]
+                u_junction_new = u_neighbors_sum / 3.0
+                
+                # Update the junction node for all edges
+                self.u1[0] = u_junction_new
+                self.u2[0] = u_junction_new
+                self.u3[0] = u_junction_new
             
             # Update Plot every 20 frames for performance
-            if n % 20 == 0:
-                line1.set_ydata(self.u1)
-                line2.set_ydata(self.u2)
-                line3.set_ydata(self.u3)
-                ax.set_title(f"Star Graph Spread: t = {n*self.dt:.2f}s")
-                plt.pause(0.001)
+            line1.set_ydata(self.u1)
+            line2.set_ydata(self.u2)
+            line3.set_ydata(self.u3)
+            ax.set_title(f"Star Graph Spread: t = {frame * steps_per_frame * self.dt:.2f}s")
+            return line1, line2, line3
 
-        plt.ioff()
-        plt.show()
+        ani = animation.FuncAnimation(fig, update, frames=total_frames, blit=True)
+        
+        # Save GIF (Need pillow: pip install pillow to view)
+        # fps=20
+        ani.save(filename, writer='pillow', fps=20)
+        plt.close()
 
 if __name__ == "__main__":
     solver = StarGraphSolver(L=10.0, T=20.0, dx=0.1, dt=0.002, D = 1.0, r = 1.0)
